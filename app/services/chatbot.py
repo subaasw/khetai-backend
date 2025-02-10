@@ -3,7 +3,7 @@ from config import OPENAI_KEY
 
 client = OpenAI( api_key = OPENAI_KEY )
 
-def chat_with_openai(message: str) -> str:
+async def chat_with_openai(message: str) -> str:
     completion = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
