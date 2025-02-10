@@ -11,6 +11,8 @@ class Farmer(SQLModel, table=True):
     verified: bool = Field(default=False)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+    products: List["Products"] = Relationship(back_populates="farmer")
+
 class VerifyOtp(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     phone: str = Field(unique=True, index=True)

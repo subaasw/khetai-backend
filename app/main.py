@@ -12,7 +12,6 @@ from typing import List
 
 from services import voice_to_text_converter
 from services.diseases_detection import predict_image_class
-
 from services.chatbot import chat_with_openai
 
 from uploader import ImageUploader, AudioUploader
@@ -103,7 +102,6 @@ def verify_otp(data: OTPVerifySchema, session: Session = Depends(get_session)):
     )
 
     return response
-
 
 @app.get("/farmer/me")
 def get_current_farmer(request: Request, session: Session = Depends(get_session)):
@@ -239,4 +237,4 @@ async def ai_chat(message: str):
 
 @app.get("/")
 async def home():
-    return {"message": "FastAPI with Supabase"}
+    return {"message": "FastAPI with"}

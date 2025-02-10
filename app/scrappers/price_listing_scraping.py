@@ -20,7 +20,7 @@ def scrap_price():
     rows_listing = []
 
     for row in listings_detail_trs:
-        columns = [ item.text for item in row.select('td')]
+        columns = [item.text for item in row.select('td')]
         rows_listing.append(columns)
 
     print(title, headings_list, rows_listing)
