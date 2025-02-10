@@ -27,6 +27,6 @@ class ImageUploader(FileUploader):
 
 class AudioUploader(FileUploader):
     async def save_file(self, file: UploadFile) -> Path:
-        if file.content_type not in ["audio/wav", "audio/mpeg"]:
-            raise HTTPException(status_code=400, detail="Invalid audio file type.")
+        # if file.content_type not in ["audio/wav", "audio/mpeg"]:
+        #     raise HTTPException(status_code=400, detail="Invalid audio file type.")
         return await super().save_file(file)

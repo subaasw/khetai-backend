@@ -1,7 +1,7 @@
 import random
 from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI, Depends, HTTPException, Request, status, UploadFile, File
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
 from database import create_db_and_tables, get_session
@@ -10,12 +10,15 @@ from schemas import FarmerLogin, FarmerRegister, OTPVerifySchema, ProductCreate,
 from utils import create_access_token, verify_access_token, get_current_farmer_id
 from typing import List
 
+from gtts import gTTS
+
 from services import voice_to_text_converter
 from services.diseases_detection import predict_image_class
 from services.chatbot import chat_with_openai
+from pydantic import BaseModel
 
 from uploader import ImageUploader, AudioUploader
-from config import PRODUCTS_DIR, USERS_DIR, VOICES_DIR
+from config import PRODUCTS_DIR, USERS_DIR, VOICES_DIR, BASE_UPLOAD_DIR
 
 product_image_uploader = ImageUploader(PRODUCTS_DIR)
 user_image_uploader = ImageUploader(USERS_DIR)
@@ -218,23 +221,47 @@ async def upload_voice(file: UploadFile = File(...)):
     try:
         await voice_uploader.save_file(file)
         text = await voice_to_text_converter('uploads/voices/' + file.filename)
+        print(text, "Text voice testing")
         return {"text": text}
     except HTTPException as e:
         raise e
+
+# class DiseasesDetection(BaseModel):
+#     file: UploadFile = File(...)
+class TextToSpeech(BaseModel):
+    text: str
+
+@app.post("/text-to-speech", response_class=FileResponse)
+async def text_to_speech(req: TextToSpeech):
+    language = 'hi'
+    tts = gTTS(text=req.text, lang=language, slow=False)
+    out_path = BASE_UPLOAD_DIR.cwd() / "response.mp3"
+    tts.save(str(out_path))
+
+    return FileResponse(
+        str(out_path),
+        media_type="audio/mpeg",   
+        filename="audio.mp3"  
+    )
     
 @app.post("/diseases-detect")
-async def diseases_detection(file: UploadFile):
+async def diseases_detection(file: UploadFile=File(...) ):
     try:
         image_path = await product_image_uploader.save_file(file)
         prediction = predict_image_class(image_path)
+        print(prediction, "Text voice testing")
         return {"prediction": prediction}
     except HTTPException as e:
         raise e
 
+
+class Chat(BaseModel):
+    message: str
+
 @app.post("/chat")
-async def ai_chat(message: str):
+async def ai_chat(message: Chat):
     res = await chat_with_openai(message)
-    return {"res": res}
+    return {"text": res}
 
 # User Routes
 @app.post("/user/login")
