@@ -1,0 +1,7 @@
+python-dotenv
+mysql-connector-python
+python-multipart
+"fastapi[standard]"
+"python-jose[cryptography]" 
+"passlib[bcrypt]"
+twilo
