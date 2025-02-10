@@ -5,8 +5,8 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
 from database import create_db_and_tables, get_session
-from models import Farmer, VerifyOtp, Products
-from schemas import FarmerLogin, FarmerRegister, OTPVerifySchema, ProductCreate, ProductUpdate
+from models import Farmer, VerifyOtp, Products, Users
+from schemas import FarmerLogin, FarmerRegister, OTPVerifySchema, ProductCreate, ProductUpdate, UserLogin, UserRegister
 from utils import create_access_token, verify_access_token, get_current_farmer_id
 from typing import List
 
@@ -97,8 +97,8 @@ def verify_otp(data: OTPVerifySchema, session: Session = Depends(get_session)):
         key="access_token",
         value=access_token,
         httponly=True,  
-        secure=True,    
-        samesite="Lax"
+        secure=False,    
+        samesite="none"
     )
 
     return response
@@ -124,10 +124,11 @@ def get_current_farmer(request: Request, session: Session = Depends(get_session)
 
 @app.post("/products", status_code=status.HTTP_201_CREATED)
 def create_product(
+    request: Request,
     product: ProductCreate,
-    token: str = Depends(verify_access_token),
     session: Session = Depends(get_session)
 ):
+    token = request.cookies.get("access_token")
     farmer = session.exec(select(Farmer).where(Farmer.phone == token)).first()
     if not farmer:
         raise HTTPException(status_code=404, detail="Farmer not found")
@@ -136,7 +137,7 @@ def create_product(
         title=product.title,
         description=product.description,
         price=product.price,
-        images=",".join(product.images) if product.images else None,
+        images=product.image,
         farmer_id=farmer.id
     )
 
@@ -235,6 +236,47 @@ async def ai_chat(message: str):
     res = await chat_with_openai(message)
     return {"res": res}
 
+# User Routes
+@app.post("/user/login")
+def user_login(login_data: UserLogin, session: Session = Depends(get_session)):
+    user = session.exec(select(Users).where(Users.phone == login_data.phone)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Farmer not found")
+    if not user.verified:
+        raise HTTPException(status_code=403, detail="Phone number not verified")
+    return {"message": "Login successful", "user_id": user.id, "name": user.name, "location": user.location, "phone": user.phone}
+
+@app.post("/user/register")
+def register_user(data: UserRegister, session: Session = Depends(get_session)):
+    existing_user = session.exec(select(Users).where(Users.phone == data.phone)).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Phone number already registered")
+    new_user = Users(phone=data.phone, name=data.name, location=data.location)
+    session.add(new_user)
+    session.commit()
+    session.refresh(new_user)
+    return {"message": "User registered successfully", "user_id": new_user.id}
+
+@app.get("/user/me")
+def get_current_user(request: Request, session: Session = Depends(get_session)):
+    token = request.cookies.get("access_token")
+    if not token:
+        raise HTTPException(status_code=401, detail="Access token missing")
+
+    phone = verify_access_token(token)
+    user = session.exec(select(Users).where(user.phone == phone)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return {
+        "id": user.id,
+        "phone": user.phone,
+        "name": user.name,
+        "location": user.location,
+        "verified": user.verified
+    }
+
 @app.get("/")
 async def home():
-    return {"message": "FastAPI with"}
+    return {"message": "Welcome to KethAI!"}
+
